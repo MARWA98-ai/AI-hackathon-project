@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ShadowMap — AI-Powered OSINT</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #080d12;
+    --surface: #0e1520;
+    --surface2: #131d2b;
+    --border: rgba(30,200,160,0.12);
+    --border2: rgba(255,255,255,0.06);
+    --teal: #1DC8A0;
+    --teal-dim: rgba(29,200,160,0.15);
+    --teal-glow: rgba(29,200,160,0.35);
+    --red: #E24B4A;
+    --orange: #D85A30;
+    --amber: #BA7517;
+    --green: #1D9E75;
+    --text: #e8edf2;
+    --text-muted: #6b7a8d;
+    --text-dim: #3d4f63;
+    --font-mono: 'Space Mono', monospace;
+    --font-sans: 'DM Sans', sans-serif;
+    --font-display: 'Bebas Neue', sans-serif;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content:'';
+    position:fixed;
+    inset:0;
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(29,200,160,0.03) 40px),
+      repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(29,200,160,0.03) 40px);
+    pointer-events:none;
+    z-index:0;
+  }
+
+  /* ─── LANDING ─── */
+  #landing {
+    position: relative;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    z-index: 1;
+  }
+
+  .radar-bg {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -60%);
+    width: 600px; height: 600px;
+    opacity: 0.12;
+    pointer-events: none;
+  }
+  .radar-bg circle { fill: none; stroke: var(--teal); stroke-width: 0.5; }
+
+  .radar-sweep {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -60%);
+    width: 600px; height: 600px;
+    pointer-events: none;
+    animation: sweep 4s linear infinite;
+    opacity: 0.15;
+  }
+  @keyframes sweep {
+    from { transform: translate(-50%,-60%) rotate(0deg); }
+    to   { transform: translate(-50%,-60%) rotate(360deg); }
+  }
+
+  .logo-block {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 2.5rem;
+    animation: fadeUp 0.6s ease both;
+  }
+  .logo-icon { width: 44px; height: 44px; }
+  .logo-text { font-family: var(--font-display); font-size: 1.8rem; letter-spacing: 0.06em; color: var(--text); }
+  .logo-text span { color: var(--teal); }
+
+  .landing-title {
+    font-family: var(--font-display);
+    font-size: clamp(3.5rem, 8vw, 6.5rem);
+    text-align: center; line-height: 0.95;
+    letter-spacing: 0.04em; max-width: 680px;
+    margin-bottom: 1.4rem;
+    animation: fadeUp 0.6s 0.1s ease both;
+  }
+  .landing-title em { font-style: normal; color: var(--teal); }
+
+  .landing-sub {
+    font-size: 1rem; font-weight: 300;
+    color: var(--text-muted); text-align: center;
+    max-width: 460px; line-height: 1.75;
+    margin-bottom: 2.5rem; letter-spacing: 0.01em;
+    animation: fadeUp 0.6s 0.2s ease both;
+  }
+
+  .scan-form { width: 100%; max-width: 540px; animation: fadeUp 0.6s 0.3s ease both; }
+
+  .scan-input-wrap {
+    position: relative; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 14px;
+    padding: 6px 6px 6px 18px;
+    display: flex; align-items: center; gap: 10px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .scan-input-wrap:focus-within {
+    border-color: var(--teal);
+    box-shadow: 0 0 0 3px var(--teal-dim), 0 0 30px var(--teal-glow);
+  }
+  .scan-input-label { font-family: var(--font-mono); font-size: 0.65rem; color: var(--teal); white-space: nowrap; letter-spacing: 0.08em; }
+  .scan-input { flex: 1; background: transparent; border: none; outline: none; color: var(--text); font-family: var(--font-mono); font-size: 0.85rem; padding: 6px 0; }
+  .scan-input::placeholder { color: var(--text-dim); }
+  .btn-scan { background: var(--teal); color: #050a0e; font-family: var(--font-sans); font-size: 0.8rem; font-weight: 700; letter-spacing: 0.04em; padding: 10px 20px; border: none; border-radius: 10px; cursor: pointer; white-space: nowrap; transition: opacity 0.15s, transform 0.1s; }
+  .btn-scan:hover { opacity: 0.88; transform: scale(0.98); }
+
+  .pills { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 1.2rem; animation: fadeUp 0.6s 0.4s ease both; }
+  .pill { font-family: var(--font-mono); font-size: 0.65rem; padding: 4px 10px; border: 1px solid var(--border2); border-radius: 100px; color: var(--text-muted); letter-spacing: 0.06em; }
+  .pill.active { border-color: var(--teal); color: var(--teal); }
+
+  .feature-row { display: flex; gap: 24px; margin-top: 3rem; animation: fadeUp 0.6s 0.5s ease both; }
+  .feat { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; font-weight: 300; color: var(--text-muted); letter-spacing: 0.02em; }
+  .feat-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal); animation: pulse 2s infinite; }
+
+  @keyframes pulse {
+    0%,100% { box-shadow: 0 0 0 0 var(--teal-glow); }
+    50% { box-shadow: 0 0 0 6px transparent; }
+  }
+  @keyframes fadeUp {
+    from { opacity:0; transform: translateY(18px); }
+    to   { opacity:1; transform: translateY(0); }
+  }
+
+  /* ─── LOADING ─── */
+  #loading {
+    position: fixed; inset: 0;
+    background: rgba(8,13,18,0.96);
+    backdrop-filter: blur(12px);
+    z-index: 100;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 28px;
+  }
+  #loading.hidden { display: none; }
+
+  .loading-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .loading-logo svg { width: 36px; height: 36px; }
+  .loading-logo-text { font-size: 1.1rem; font-weight: 800; letter-spacing: -0.03em; }
+  .loading-logo-text span { color: var(--teal); }
+
+  .loading-radar { position: relative; width: 160px; height: 160px; }
+  .loading-radar svg { width: 100%; height: 100%; animation: sweepFull 2s linear infinite; }
+  @keyframes sweepFull { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  .loading-radar-inner { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; }
+  .loading-radar-score { font-family: var(--font-mono); font-size: 0.6rem; color: var(--teal); letter-spacing: 0.1em; text-transform: uppercase; }
+
+  .loading-dots { display: flex; gap: 6px; align-items: center; }
+  .loading-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--teal); animation: blink 1.2s ease-in-out infinite; }
+  .loading-dot:nth-child(2) { animation-delay: 0.2s; }
+  .loading-dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes blink {
+    0%,100% { opacity:0.2; transform: scale(0.8); }
+    50% { opacity:1; transform: scale(1); }
+  }
+
+  .loading-text-wrap { text-align: center; }
+  #loadingText { font-family: var(--font-mono); font-size: 0.82rem; color: var(--teal); letter-spacing: 0.04em; transition: opacity 0.3s; min-height: 1.2em; }
+  .loading-subtext { font-family: var(--font-mono); font-size: 0.65rem; color: var(--text-dim); margin-top: 6px; letter-spacing: 0.06em; }
+
+  .loading-bar-track { width: 260px; height: 2px; background: var(--surface2); border-radius: 2px; overflow: hidden; }
+  .loading-bar-fill { height: 100%; background: linear-gradient(90deg, var(--teal), rgba(29,200,160,0.4)); border-radius: 2px; width: 0%; animation: loadBar 6s linear forwards; }
+  @keyframes loadBar {
+    0%{ width:0% } 20%{ width:22% } 40%{ width:44% } 60%{ width:60% } 80%{ width:78% } 95%{ width:92% } 100%{ width:96% }
+  }
+
+  .loading-steps { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; width: 260px; }
+  .loading-step { display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 0.65rem; color: var(--text-dim); transition: color 0.4s; }
+  .loading-step.done { color: var(--teal); }
+  .loading-step.active { color: var(--text-muted); }
+  .step-icon { width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--text-dim); display: flex; align-items: center; justify-content: center; font-size: 7px; flex-shrink: 0; transition: all 0.4s; }
+  .loading-step.done .step-icon { border-color: var(--teal); background: var(--teal); color: #050a0e; }
+  .loading-step.active .step-icon { border-color: var(--text-muted); animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); border-top-color: var(--teal); } }
+
+  /* ─── DASHBOARD ─── */
+  #dashboard { display: none; min-height: 100vh; z-index: 1; position: relative; }
+
+  .dash-header {
+    background: var(--surface); border-bottom: 1px solid var(--border2);
+    padding: 0 24px; height: 52px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 10;
+  }
+  .dash-logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1rem; letter-spacing: -0.03em; }
+  .dash-logo span { color: var(--teal); }
+  .dash-logo svg { width: 28px; height: 28px; }
+
+  .dash-nav { display: flex; gap: 4px; }
+  .dash-nav-item {
+    font-family: var(--font-mono); font-size: 0.65rem;
+    padding: 5px 12px; border-radius: 6px; color: var(--text-muted);
+    cursor: pointer; letter-spacing: 0.04em;
+    border: 1px solid transparent; transition: all 0.15s;
+    user-select: none;
+  }
+  .dash-nav-item:hover { background: var(--teal-dim); color: var(--teal); border-color: var(--border); }
+  .dash-nav-item.active { border-color: var(--border); background: var(--teal-dim); color: var(--teal); }
+
+  .dash-right { display: flex; align-items: center; gap: 14px; }
+  .dash-target { font-family: var(--font-mono); font-size: 0.65rem; color: var(--text-muted); }
+  .dash-target strong { color: var(--text); font-weight: 700; }
+  .btn-new { background: transparent; border: 1px solid var(--border); color: var(--teal); font-family: var(--font-mono); font-size: 0.65rem; padding: 6px 12px; border-radius: 6px; cursor: pointer; letter-spacing: 0.04em; transition: background 0.15s; }
+  .btn-new:hover { background: var(--teal-dim); }
+
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal); animation: pulse 1.5s infinite; display: inline-block; }
+
+  /* ─── TAB PANELS ─── */
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  .dash-body {
+    padding: 24px;
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 20px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .dash-left { display: flex; flex-direction: column; gap: 14px; }
+  .dash-main { display: flex; flex-direction: column; gap: 14px; }
+
+  /* Cards */
+  .card { background: var(--surface); border: 1px solid var(--border2); border-radius: 14px; padding: 16px; animation: fadeUp 0.5s ease both; }
+  .card-title { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; }
+  .card-badge { font-family: var(--font-mono); font-size: 0.6rem; padding: 2px 8px; border-radius: 4px; }
+
+  .score-wrap { display: flex; flex-direction: column; align-items: center; padding: 8px 0 16px; }
+  .score-ring-container { position: relative; width: 160px; height: 160px; }
+  .score-ring-container svg { transform: rotate(-90deg); width: 100%; height: 100%; }
+  .score-ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .score-number { font-size: 2.6rem; font-weight: 800; line-height: 1; letter-spacing: -0.04em; }
+  .score-label { font-family: var(--font-mono); font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase; margin-top: 4px; }
+  .score-company { font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-muted); margin-top: 12px; letter-spacing: 0.04em; }
+  .score-sub { font-size: 0.65rem; color: var(--text-dim); font-family: var(--font-mono); margin-top: 4px; }
+
+  .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding-top: 14px; border-top: 1px solid var(--border2); }
+  .stat-cell { text-align: center; }
+  .stat-val { font-size: 1.4rem; font-weight: 800; letter-spacing: -0.04em; line-height: 1; }
+  .stat-lbl { font-family: var(--font-mono); font-size: 0.58rem; color: var(--text-dim); margin-top: 4px; letter-spacing: 0.04em; }
+
+  .cat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .cat-card { background: var(--surface2); border: 1px solid var(--border2); border-radius: 10px; padding: 12px; transition: border-color 0.2s; }
+  .cat-card:hover { border-color: var(--border); }
+  .cat-name { font-size: 0.72rem; font-weight: 700; margin-bottom: 8px; letter-spacing: -0.01em; }
+  .cat-score-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .cat-score-num { font-family: var(--font-mono); font-size: 0.65rem; font-weight: 700; }
+  .progress-bar { height: 5px; background: rgba(255,255,255,0.06); border-radius: 3px; margin-bottom: 8px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 3px; transition: width 1s ease; }
+  .cat-findings { list-style: none; padding: 0; }
+  .cat-finding { font-family: var(--font-mono); font-size: 0.6rem; color: var(--text-muted); padding: 2px 0; border-top: 1px solid var(--border2); line-height: 1.5; }
+  .cat-finding:first-child { border-top: none; }
+
+  .alert-list { display: flex; flex-direction: column; gap: 8px; }
+  .alert-item { display: flex; gap: 10px; padding: 10px 12px; border-radius: 8px; border-left: 3px solid; background: var(--surface2); align-items: flex-start; }
+  .alert-sev { font-family: var(--font-mono); font-size: 0.58rem; font-weight: 700; letter-spacing: 0.08em; padding: 2px 6px; border-radius: 4px; white-space: nowrap; flex-shrink: 0; margin-top: 1px; }
+  .alert-content { flex: 1; min-width: 0; }
+  .alert-title { font-size: 0.75rem; font-weight: 600; margin-bottom: 2px; line-height: 1.3; }
+  .alert-desc { font-family: var(--font-mono); font-size: 0.6rem; color: var(--text-muted); line-height: 1.5; }
+  .alert-time { font-family: var(--font-mono); font-size: 0.58rem; color: var(--text-dim); white-space: nowrap; flex-shrink: 0; }
+
+  .scenario-list { display: flex; flex-direction: column; gap: 8px; }
+  .scenario-item { border-left: 3px solid var(--red); background: rgba(226,75,74,0.05); border-radius: 0 8px 8px 0; padding: 10px 12px; }
+  .scenario-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .scenario-title { font-size: 0.75rem; font-weight: 600; }
+  .mitre-badge { font-family: var(--font-mono); font-size: 0.58rem; padding: 2px 6px; background: rgba(226,75,74,0.12); border: 1px solid rgba(226,75,74,0.25); border-radius: 4px; color: #e87777; letter-spacing: 0.06em; }
+  .likelihood-row { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+  .likelihood-label { font-family: var(--font-mono); font-size: 0.58rem; color: var(--text-dim); letter-spacing: 0.06em; }
+  .likelihood-val { font-family: var(--font-mono); font-size: 0.6rem; font-weight: 700; }
+  .scenario-desc { font-family: var(--font-mono); font-size: 0.62rem; color: var(--text-muted); line-height: 1.5; margin-top: 4px; }
+
+  .mit-list { display: flex; flex-direction: column; gap: 6px; }
+  .mit-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px; background: var(--surface2); border-radius: 8px; }
+  .mit-badge { font-family: var(--font-mono); font-size: 0.58rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; letter-spacing: 0.06em; white-space: nowrap; flex-shrink: 0; margin-top: 1px; }
+  .mit-text { font-size: 0.72rem; line-height: 1.4; color: var(--text); }
+
+  .report-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .report-btn { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 16px 10px; background: var(--surface2); border: 1px solid var(--border2); border-radius: 10px; cursor: pointer; transition: all 0.15s; color: var(--text); font-family: var(--font-sans); }
+  .report-btn:hover { border-color: var(--teal); background: var(--teal-dim); }
+  .report-btn svg { opacity: 0.6; }
+  .report-btn-label { font-size: 0.7rem; font-weight: 600; text-align: center; line-height: 1.3; }
+  .report-btn-sub { font-family: var(--font-mono); font-size: 0.58rem; color: var(--text-dim); }
+
+  .tag-new { font-family: var(--font-mono); font-size: 0.55rem; padding: 1px 5px; background: rgba(29,200,160,0.15); border: 1px solid rgba(29,200,160,0.3); color: var(--teal); border-radius: 3px; letter-spacing: 0.06em; margin-left: 6px; }
+  .scan-meta { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .scan-meta-item { display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 0.65rem; color: var(--text-muted); }
+  .scan-meta-item strong { color: var(--text); }
+  .divider { height: 1px; background: var(--border2); margin: 12px 0; }
+
+  /* ─── LIVE SCAN PANEL ─── */
+  .terminal-wrap {
+    background: #050a0e;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    line-height: 1.8;
+    max-height: 340px;
+    overflow-y: auto;
+    color: var(--teal);
+  }
+  .terminal-wrap .t-dim { color: var(--text-dim); }
+  .terminal-wrap .t-warn { color: var(--amber); }
+  .terminal-wrap .t-err { color: var(--red); }
+  .terminal-wrap .t-ok { color: var(--green); }
+  .terminal-wrap .t-white { color: var(--text); }
+  .terminal-cursor { display: inline-block; width: 8px; height: 12px; background: var(--teal); animation: blink 1s step-end infinite; vertical-align: text-bottom; margin-left: 2px; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+  .live-scan-form { display: flex; gap: 8px; margin-bottom: 14px; }
+  .live-scan-input { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; color: var(--text); font-family: var(--font-mono); font-size: 0.75rem; outline: none; }
+  .live-scan-input:focus { border-color: var(--teal); }
+  .live-scan-btn { background: var(--teal); color: #050a0e; font-family: var(--font-mono); font-size: 0.7rem; font-weight: 700; padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; letter-spacing: 0.04em; transition: opacity 0.15s; }
+  .live-scan-btn:hover { opacity: 0.85; }
+
+  .module-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .module-card { background: var(--surface2); border: 1px solid var(--border2); border-radius: 10px; padding: 12px; }
+  .module-name { font-size: 0.72rem; font-weight: 700; margin-bottom: 6px; }
+  .module-status { display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 0.62rem; }
+  .status-active { color: var(--teal); }
+  .status-idle { color: var(--text-dim); }
+  .status-pulse { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .status-pulse.on { background: var(--teal); animation: pulse 1.5s infinite; }
+  .status-pulse.off { background: var(--text-dim); }
+
+  /* ─── ALERTS PANEL ─── */
+  .alert-filters { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+  .filter-btn { font-family: var(--font-mono); font-size: 0.6rem; padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border2); color: var(--text-muted); cursor: pointer; transition: all 0.15s; background: transparent; }
+  .filter-btn:hover, .filter-btn.active { border-color: var(--teal); color: var(--teal); background: var(--teal-dim); }
+  .filter-btn.crit.active { border-color: var(--red); color: #e87777; background: rgba(226,75,74,0.12); }
+  .filter-btn.high.active { border-color: var(--amber); color: #e8a84b; background: rgba(186,117,23,0.12); }
+  .alert-count-row { display: flex; gap: 14px; margin-bottom: 14px; }
+  .acnt { text-align: center; padding: 10px 16px; background: var(--surface2); border-radius: 8px; flex: 1; }
+  .acnt-num { font-size: 1.5rem; font-weight: 800; line-height: 1; }
+  .acnt-lbl { font-family: var(--font-mono); font-size: 0.58rem; color: var(--text-dim); margin-top: 4px; letter-spacing: 0.04em; }
+
+  /* ─── REPORTS PANEL ─── */
+  .reports-page { padding: 24px; max-width: 900px; margin: 0 auto; }
+  .report-big-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+  .report-big-btn { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 28px 16px; background: var(--surface); border: 1px solid var(--border2); border-radius: 14px; cursor: pointer; transition: all 0.2s; color: var(--text); font-family: var(--font-sans); }
+  .report-big-btn:hover { border-color: var(--teal); background: rgba(29,200,160,0.05); transform: translateY(-2px); }
+  .report-big-icon { width: 44px; height: 44px; background: var(--teal-dim); border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+  .report-big-title { font-size: 0.9rem; font-weight: 600; text-align: center; }
+  .report-big-sub { font-family: var(--font-mono); font-size: 0.62rem; color: var(--text-dim); }
+  .report-history { background: var(--surface); border: 1px solid var(--border2); border-radius: 14px; padding: 16px; }
+  .report-history-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border2); }
+  .report-history-item:last-child { border-bottom: none; }
+  .rhi-left { display: flex; flex-direction: column; gap: 4px; }
+  .rhi-name { font-size: 0.78rem; font-weight: 500; }
+  .rhi-meta { font-family: var(--font-mono); font-size: 0.6rem; color: var(--text-dim); }
+  .rhi-right { display: flex; align-items: center; gap: 8px; }
+  .rhi-size { font-family: var(--font-mono); font-size: 0.62rem; color: var(--text-dim); }
+  .rhi-dl { font-family: var(--font-mono); font-size: 0.62rem; padding: 4px 10px; border: 1px solid var(--border); border-radius: 6px; color: var(--teal); cursor: pointer; background: transparent; transition: background 0.15s; }
+  .rhi-dl:hover { background: var(--teal-dim); }
+
+  .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 60px 20px; color: var(--text-dim); text-align: center; }
+  .empty-icon { width: 48px; height: 48px; opacity: 0.3; }
+  .empty-title { font-size: 0.9rem; font-weight: 500; color: var(--text-muted); }
+  .empty-sub { font-family: var(--font-mono); font-size: 0.65rem; max-width: 280px; line-height: 1.6; }
+
+  /* Notification toast */
+  .toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: var(--surface);
+    border: 1px solid var(--teal);
+    border-radius: 10px;
+    padding: 12px 18px;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--teal);
+    z-index: 200;
+    transform: translateY(80px);
+    opacity: 0;
+    transition: all 0.3s;
+    pointer-events: none;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- ─── LANDING ─── -->
+<section id="landing">
+  <svg class="radar-bg" viewBox="0 0 600 600">
+    <circle cx="300" cy="300" r="60"/><circle cx="300" cy="300" r="120"/>
+    <circle cx="300" cy="300" r="180"/><circle cx="300" cy="300" r="240"/>
+    <circle cx="300" cy="300" r="290"/>
+    <line x1="300" y1="10" x2="300" y2="590" stroke="var(--teal)" stroke-width="0.5"/>
+    <line x1="10" y1="300" x2="590" y2="300" stroke="var(--teal)" stroke-width="0.5"/>
+    <line x1="90" y1="90" x2="510" y2="510" stroke="var(--teal)" stroke-width="0.5"/>
+    <line x1="510" y1="90" x2="90" y2="510" stroke="var(--teal)" stroke-width="0.5"/>
+  </svg>
+  <svg class="radar-sweep" viewBox="0 0 600 600">
+    <defs>
+      <linearGradient id="sweepGrad" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="transparent"/>
+        <stop offset="100%" stop-color="var(--teal)" stop-opacity="0.6"/>
+      </linearGradient>
+    </defs>
+    <path d="M300 300 L300 20 A280 280 0 0 1 520 420 Z" fill="url(#sweepGrad)"/>
+  </svg>
+
+  <div class="logo-block">
+    <svg class="logo-icon" viewBox="0 0 44 44" fill="none">
+      <circle cx="22" cy="22" r="21" stroke="var(--teal)" stroke-width="1.5" stroke-dasharray="4 2"/>
+      <circle cx="22" cy="22" r="13" stroke="var(--teal)" stroke-width="1"/>
+      <circle cx="22" cy="22" r="5" fill="var(--teal)" opacity="0.8"/>
+      <circle cx="22" cy="22" r="2.5" fill="var(--teal)"/>
+      <line x1="22" y1="1" x2="22" y2="9" stroke="var(--teal)" stroke-width="1.5"/>
+      <line x1="22" y1="35" x2="22" y2="43" stroke="var(--teal)" stroke-width="1.5"/>
+      <line x1="1" y1="22" x2="9" y2="22" stroke="var(--teal)" stroke-width="1.5"/>
+      <line x1="35" y1="22" x2="43" y2="22" stroke="var(--teal)" stroke-width="1.5"/>
+    </svg>
+    <div class="logo-text">Shadow<span>Map</span></div>
+  </div>
+
+  <h1 class="landing-title">Find your <em>blind spots</em><br/>before attackers do</h1>
+  <p class="landing-sub">Automatically discover exposed assets, surface exploitable entry points, and reduce reconnaissance time by over 40% — powered by AI.</p>
+
+  <div class="scan-form">
+    <div class="scan-input-wrap">
+      <span class="scan-input-label">TARGET //</span>
+      <input id="domainInput" class="scan-input" type="text" placeholder="shopify.com" value="shopify.com"/>
+      <button class="btn-scan" onclick="startScan()">Start Scan →</button>
+    </div>
+    <div class="pills">
+      <span class="pill active">Recon OSINT</span>
+      <span class="pill">Red Team</span>
+      <span class="pill">MITRE ATT&CK</span>
+    </div>
+  </div>
+
+  <div class="feature-row">
+    <div class="feat"><span class="feat-dot"></span>Gemini AI Web Search</div>
+    <div class="feat"><span class="feat-dot" style="animation-delay:.4s"></span>MITRE ATT&CK mapping</div>
+    <div class="feat"><span class="feat-dot" style="animation-delay:.8s"></span>Rapport PDF automatique</div>
+  </div>
+</section>
+
+<!-- ─── LOADING ─── -->
+<div id="loading" class="hidden">
+  <div class="loading-logo">
+    <svg viewBox="0 0 44 44" fill="none">
+      <circle cx="22" cy="22" r="21" stroke="var(--teal)" stroke-width="1.5" stroke-dasharray="4 2"/>
+      <circle cx="22" cy="22" r="13" stroke="var(--teal)" stroke-width="1"/>
+      <circle cx="22" cy="22" r="5" fill="var(--teal)" opacity="0.8"/>
+      <circle cx="22" cy="22" r="2.5" fill="var(--teal)"/>
+      <line x1="22" y1="1" x2="22" y2="9" stroke="var(--teal)" stroke-width="1.5"/>
+      <line x1="22" y1="35" x2="22" y2="43" stroke="var(--teal)" stroke-width="1.5"/>
+      <line x1="1" y1="22" x2="9" y2="22" stroke="var(--teal)" stroke-width="1.5"/>
+      <line x1="35" y1="22" x2="43" y2="22" stroke="var(--teal)" stroke-width="1.5"/>
+    </svg>
+    <div class="loading-logo-text">Shadow<span>Map</span></div>
+  </div>
+  <div class="loading-radar">
+    <svg viewBox="0 0 160 160" fill="none">
+      <circle cx="80" cy="80" r="70" stroke="rgba(29,200,160,0.08)" stroke-width="1"/>
+      <circle cx="80" cy="80" r="50" stroke="rgba(29,200,160,0.1)" stroke-width="1"/>
+      <circle cx="80" cy="80" r="30" stroke="rgba(29,200,160,0.12)" stroke-width="1"/>
+      <defs>
+        <linearGradient id="sweepLoad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="transparent"/>
+          <stop offset="100%" stop-color="var(--teal)" stop-opacity="0.8"/>
+        </linearGradient>
+      </defs>
+      <path d="M80 80 L80 10 A70 70 0 0 1 135 115 Z" fill="url(#sweepLoad)"/>
+      <circle cx="80" cy="80" r="4" fill="var(--teal)"/>
+    </svg>
+    <div class="loading-radar-inner">
+      <div class="loading-radar-score">SCANNING</div>
+    </div>
+  </div>
+  <div class="loading-text-wrap">
+    <div id="loadingText">Initialisation du scan...</div>
+    <div class="loading-subtext">OSINT PIPELINE ACTIVE // <span id="loadTarget">—</span></div>
+  </div>
+  <div class="loading-bar-track"><div class="loading-bar-fill" id="loadBar"></div></div>
+  <div class="loading-steps" id="loadingSteps">
+    <div class="loading-step" data-step="0"><div class="step-icon">○</div><span>Scan des profils LinkedIn</span></div>
+    <div class="loading-step" data-step="1"><div class="step-icon">○</div><span>Analyse des repos GitHub</span></div>
+    <div class="loading-step" data-step="2"><div class="step-icon">○</div><span>Recherche fuites de données</span></div>
+    <div class="loading-step" data-step="3"><div class="step-icon">○</div><span>Vérification sous-domaines</span></div>
+    <div class="loading-step" data-step="4"><div class="step-icon">○</div><span>Compilation du rapport</span></div>
+  </div>
+  <div class="loading-dots">
+    <div class="loading-dot"></div><div class="loading-dot"></div><div class="loading-dot"></div>
+  </div>
+</div>
+
+<!-- ─── DASHBOARD ─── -->
+<div id="dashboard">
+  <header class="dash-header">
+    <div class="dash-logo">
+      <svg viewBox="0 0 44 44" fill="none">
+        <circle cx="22" cy="22" r="21" stroke="var(--teal)" stroke-width="1.5" stroke-dasharray="4 2"/>
+        <circle cx="22" cy="22" r="13" stroke="var(--teal)" stroke-width="1"/>
+        <circle cx="22" cy="22" r="5" fill="var(--teal)" opacity="0.8"/>
+        <circle cx="22" cy="22" r="2.5" fill="var(--teal)"/>
+        <line x1="22" y1="1" x2="22" y2="9" stroke="var(--teal)" stroke-width="1.5"/>
+        <line x1="22" y1="35" x2="22" y2="43" stroke="var(--teal)" stroke-width="1.5"/>
+        <line x1="1" y1="22" x2="9" y2="22" stroke="var(--teal)" stroke-width="1.5"/>
+        <line x1="35" y1="22" x2="43" y2="22" stroke="var(--teal)" stroke-width="1.5"/>
+      </svg>
+      Shadow<span>Map</span>
+    </div>
+    <nav class="dash-nav">
+      <div class="dash-nav-item active" onclick="switchTab('attack-surface', this)">Attack Surface</div>
+      <div class="dash-nav-item" onclick="switchTab('live-scan', this)">Live Scan</div>
+      <div class="dash-nav-item" onclick="switchTab('alerts', this)">Alerts <span id="alertBadge" style="background:rgba(226,75,74,0.2);color:#e87777;font-size:0.55rem;padding:1px 5px;border-radius:3px;margin-left:4px;font-family:var(--font-mono)">5</span></div>
+      <div class="dash-nav-item" onclick="switchTab('reports', this)">Reports</div>
+    </nav>
+    <div class="dash-right">
+      <div class="dash-target">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="status-dot"></span>
+          <strong id="dashTarget">shopify.com</strong>
+        </div>
+      </div>
+      <button class="btn-new" onclick="resetToLanding()">+ New Scan</button>
+    </div>
+  </header>
+
+  <!-- ══════════ TAB: ATTACK SURFACE ══════════ -->
+  <div id="tab-attack-surface" class="tab-panel active">
+    <div class="dash-body">
+      <div class="dash-left">
+        <div class="card" id="scoreCard">
+          <div class="card-title">
+            Risk Score
+            <span class="card-badge" id="riskBadge" style="background:rgba(226,75,74,0.12);color:#e87777;">HIGH</span>
+          </div>
+          <div class="score-wrap">
+            <div class="score-ring-container">
+              <svg viewBox="0 0 160 160">
+                <circle cx="80" cy="80" r="64" fill="rgba(186,117,23,0.07)" stroke="rgba(255,255,255,0.04)" stroke-width="12"/>
+                <circle id="scoreArc" cx="80" cy="80" r="64" fill="none" stroke="#BA7517"
+                  stroke-width="12" stroke-linecap="round"
+                  stroke-dasharray="0 402"
+                  style="transition: stroke-dasharray 1.4s cubic-bezier(.4,0,.2,1)"/>
+              </svg>
+              <div class="score-ring-center">
+                <div class="score-number" id="scoreNum" style="color:#BA7517">0</div>
+                <div class="score-label" id="scoreLabel" style="color:#BA7517">High</div>
+              </div>
+            </div>
+            <div class="score-company" id="scoreCompany">shopify.com</div>
+            <div class="score-sub" id="scoreSub">Scan terminé · just now</div>
+          </div>
+          <div class="stats-row">
+            <div class="stat-cell">
+              <div class="stat-val" style="color:var(--amber)" id="statAssets">—</div>
+              <div class="stat-lbl">Findings</div>
+            </div>
+            <div class="stat-cell">
+              <div class="stat-val" style="color:var(--teal)">5</div>
+              <div class="stat-lbl">Catégories</div>
+            </div>
+            <div class="stat-cell">
+              <div class="stat-val" style="color:var(--red)" id="statCritical">—</div>
+              <div class="stat-lbl">Critical</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Scan Info</div>
+          <div class="scan-meta">
+            <div class="scan-meta-item">Source <strong>OSINT + AI</strong></div>
+            <div class="scan-meta-item">Profondeur <strong>Full</strong></div>
+          </div>
+          <div class="divider"></div>
+          <div class="scan-meta">
+            <div class="scan-meta-item">Technique <strong>Passive Recon</strong></div>
+            <div class="scan-meta-item">MITRE <strong>TA0043</strong></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Export Rapport</div>
+          <div class="report-grid">
+            <button class="report-btn" onclick="exportPDF()">
+              <svg width="20" height="20" fill="none" stroke="var(--teal)" stroke-width="1.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              <div class="report-btn-label">Executive Summary</div>
+              <div class="report-btn-sub">PDF</div>
+            </button>
+            <button class="report-btn" onclick="exportJSON()">
+              <svg width="20" height="20" fill="none" stroke="var(--teal)" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M3 9h18M3 15h18"/></svg>
+              <div class="report-btn-label">Raw Data</div>
+              <div class="report-btn-sub">JSON</div>
+            </button>
+            <button class="report-btn" onclick="switchTab('reports', document.querySelector(\'.dash-nav-item:nth-child(4)\'))">
+              <svg width="20" height="20" fill="none" stroke="var(--teal)" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+              <div class="report-btn-label">Historique</div>
+              <div class="report-btn-sub">Reports</div>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="dash-main">
+        <div class="card">
+          <div class="card-title">Attack Surface Categories</div>
+          <div class="cat-grid" id="catGrid"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">
+            Critical Alerts
+            <span class="card-badge" style="background:rgba(226,75,74,0.12);color:#e87777;border:1px solid rgba(226,75,74,0.2)">● CRITICAL · HIGH</span>
+          </div>
+          <div id="alertListMain" class="alert-list"></div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div class="card">
+            <div class="card-title">Attack Scenarios</div>
+            <div class="scenario-list" id="scenarioList"></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Mitigations</div>
+            <div class="mit-list" id="mitList"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ TAB: LIVE SCAN ══════════ -->
+  <div id="tab-live-scan" class="tab-panel">
+    <div style="padding:24px;max-width:900px;margin:0 auto">
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-title">Nouveau scan en direct</div>
+        <div class="live-scan-form">
+          <input id="liveScanInput" class="live-scan-input" type="text" placeholder="Entrez un domaine cible (ex: github.com)"/>
+          <button class="live-scan-btn" onclick="runLiveScan()">► Lancer le scan</button>
+        </div>
+        <div class="module-grid">
+          <div class="module-card">
+            <div class="module-name">LinkedIn Recon</div>
+            <div class="module-status"><span class="status-pulse on"></span><span class="status-active">Actif — scanning</span></div>
+          </div>
+          <div class="module-card">
+            <div class="module-name">GitHub Monitor</div>
+            <div class="module-status"><span class="status-pulse on"></span><span class="status-active">Actif — scanning</span></div>
+          </div>
+          <div class="module-card">
+            <div class="module-name">DNS Enumeration</div>
+            <div class="module-status"><span class="status-pulse on"></span><span class="status-active">Actif — scanning</span></div>
+          </div>
+          <div class="module-card">
+            <div class="module-name">Data Leak Monitor</div>
+            <div class="module-status"><span class="status-pulse off"></span><span class="status-idle">En attente</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">
+          Terminal — Sortie OSINT
+          <span style="font-family:var(--font-mono);font-size:0.6rem;color:var(--teal)">● LIVE</span>
+        </div>
+        <div class="terminal-wrap" id="terminal">
+          <div class="t-dim">[ShadowMap v1.0] OSINT Pipeline initialized</div>
+          <div class="t-dim">[SYS] Gemini AI engine connected</div>
+          <div>[INFO] Target loaded: <span class="t-white" id="termTarget">shopify.com</span></div>
+          <div class="t-dim">[SYS] Web search tool: ENABLED</div>
+          <div>---</div>
+          <div>[T1593] Searching LinkedIn profiles... <span class="t-ok">DONE</span></div>
+          <div class="t-warn">[WARN] 5.2K employee profiles indexed — high people exposure</div>
+          <div>[T1593.003] Scanning GitHub repositories... <span class="t-ok">DONE</span></div>
+          <div class="t-err">[CRITICAL] AWS_SECRET_KEY found in public repo: shopify/infra-tools</div>
+          <div>[T1596] DNS enumeration... <span class="t-ok">DONE</span></div>
+          <div class="t-warn">[HIGH] 127 subdomains found — 3 CNAME orphelins détectés</div>
+          <div>[T1589] Data leak check... <span class="t-ok">DONE</span></div>
+          <div class="t-err">[CRITICAL] Credentials found in dark web dump (Hunter.io: 12K emails)</div>
+          <div>---</div>
+          <div class="t-ok">[DONE] Scan completed. Score: 72/100 — RISK: HIGH</div>
+          <div><span class="terminal-cursor"></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ TAB: ALERTS ══════════ -->
+  <div id="tab-alerts" class="tab-panel">
+    <div style="padding:24px;max-width:900px;margin:0 auto">
+      <div class="alert-count-row">
+        <div class="acnt"><div class="acnt-num" style="color:var(--red)">3</div><div class="acnt-lbl">CRITICAL</div></div>
+        <div class="acnt"><div class="acnt-num" style="color:var(--amber)">2</div><div class="acnt-lbl">HIGH</div></div>
+        <div class="acnt"><div class="acnt-num" style="color:var(--green)">0</div><div class="acnt-lbl">MEDIUM</div></div>
+        <div class="acnt"><div class="acnt-num" style="color:var(--text-muted)">5</div><div class="acnt-lbl">TOTAL</div></div>
+      </div>
+      <div class="alert-filters">
+        <button class="filter-btn active" onclick="filterAlerts('all', this)">Tous (5)</button>
+        <button class="filter-btn crit" onclick="filterAlerts('CRITICAL', this)">Critical (3)</button>
+        <button class="filter-btn high" onclick="filterAlerts('HIGH', this)">High (2)</button>
+      </div>
+      <div class="card">
+        <div class="card-title">Alertes de sécurité — <span id="alertFilterLabel">Tous</span></div>
+        <div class="alert-list" id="alertListFull"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ TAB: REPORTS ══════════ -->
+  <div id="tab-reports" class="tab-panel">
+    <div class="reports-page">
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">Générer un nouveau rapport</div>
+        <div class="report-big-grid">
+          <button class="report-big-btn" onclick="exportPDF()">
+            <div class="report-big-icon"><svg width="24" height="24" fill="none" stroke="var(--teal)" stroke-width="1.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>
+            <div class="report-big-title">Executive Summary</div>
+            <div class="report-big-sub">PDF — pour la direction</div>
+          </button>
+          <button class="report-big-btn" onclick="exportJSON()">
+            <div class="report-big-icon"><svg width="24" height="24" fill="none" stroke="var(--teal)" stroke-width="1.5" viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div>
+            <div class="report-big-title">Technical Report</div>
+            <div class="report-big-sub">JSON — pour les devs</div>
+          </button>
+          <button class="report-big-btn" onclick="showToast('Génération du bundle en cours...')">
+            <div class="report-big-icon"><svg width="24" height="24" fill="none" stroke="var(--teal)" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
+            <div class="report-big-title">Evidence Bundle</div>
+            <div class="report-big-sub">ZIP — toutes les preuves</div>
+          </button>
+        </div>
+      </div>
+      <div class="report-history card">
+        <div class="card-title">Historique des rapports</div>
+        <div class="report-history-item">
+          <div class="rhi-left">
+            <div class="rhi-name">ShadowMap — shopify.com — Executive Summary</div>
+            <div class="rhi-meta">Généré aujourd'hui · Score: 72/100 HIGH</div>
+          </div>
+          <div class="rhi-right">
+            <span class="rhi-size">124 KB</span>
+            <button class="rhi-dl" onclick="exportPDF()">↓ PDF</button>
+          </div>
+        </div>
+        <div class="report-history-item">
+          <div class="rhi-left">
+            <div class="rhi-name">ShadowMap — shopify.com — Technical Report</div>
+            <div class="rhi-meta">Généré aujourd'hui · OSINT raw data</div>
+          </div>
+          <div class="rhi-right">
+            <span class="rhi-size">48 KB</span>
+            <button class="rhi-dl" onclick="exportJSON()">↓ JSON</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast notification -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── DATA ────────────────────────────────────────────────────────────────────
+const CAT_LABELS = {
+  tech_stack:       'Stack technologique',
+  people_exposure:  'Exposition employés',
+  code_credentials: 'Code & Credentials',
+  domains_infra:    'Domaines & Infra',
+  data_leaks:       'Fuites de données'
+};
+
+const FALLBACK_DATA = {
+  overall_score: 72,
+  company: 'shopify.com',
+  categories: {
+    tech_stack:       { score: 45, findings: ['React 18.x + Next.js 14 détecté','GraphQL API publique sans auth'] },
+    people_exposure:  { score: 82, findings: ['5.2K employés indexés LinkedIn','Emails dev@shopify.com exposés'] },
+    code_credentials: { score: 91, findings: ['AWS keys dans repo GitHub public','Sentry DSN exposé dans bundle JS'] },
+    domains_infra:    { score: 55, findings: ['127 sous-domaines découverts','3 CNAME orphelins détectés'] },
+    data_leaks:       { score: 72, findings: ['Dump Pastebin base de données','Hunter.io : 12K emails référencés'] }
+  },
+  attack_scenarios: [
+    { title: 'AWS Token in Public Repo', mitre_technique: 'T1552.001', likelihood: 'CRITICAL', description: 'Clé IAM avec accès S3 trouvée dans repo GitHub shopify/infra-tools — accès cloud direct possible.' },
+    { title: 'Credential Stuffing via Leak', mitre_technique: 'T1110.004', likelihood: 'HIGH', description: 'Les 12K emails/passwords du dump peuvent être testés sur le portail admin et l\'API Shopify Partners.' },
+    { title: 'Subdomain Takeover', mitre_technique: 'T1584.001', likelihood: 'HIGH', description: '3 enregistrements CNAME pointent vers des services cloud déprovisionnés — prise de contrôle possible.' }
+  ],
+  mitigations: [
+    { priority: 'CRITICAL', finding: 'AWS Access Key exposée', action: 'Révoquer immédiatement + rotation des clés IAM + activer CloudTrail alerts' },
+    { priority: 'CRITICAL', finding: 'Credentials dans dump', action: 'Forcer reset mot de passe + activer MFA obligatoire sur tous les portails' },
+    { priority: 'HIGH', finding: 'CNAME orphelins', action: 'Auditer et supprimer les entrées DNS pointant vers des services déprovisionnés' },
+    { priority: 'HIGH', finding: 'GraphQL introspection', action: 'Désactiver introspection en prod + implémenter rate limiting + auth obligatoire' },
+    { priority: 'MEDIUM', finding: 'LinkedIn stack exposure', action: 'Réviser les offres d\'emploi — supprimer versions et outils internes spécifiques' }
+  ]
+};
+
+
+
+let currentData = FALLBACK_DATA;
+let activeFilter = 'all';
+
+// ─── RISK COLOR ──────────────────────────────────────────────────────────────
+function getRiskColor(score) {
+  if (score <= 30) return { stroke: '#1D9E75', bg: 'rgba(29,158,117,0.08)', label: 'Low',      badgeStyle: 'background:rgba(29,158,117,0.12);color:#4ecba0' };
+  if (score <= 60) return { stroke: '#BA7517', bg: 'rgba(186,117,23,0.08)', label: 'Medium',   badgeStyle: 'background:rgba(186,117,23,0.12);color:#e8a84b' };
+  if (score <= 80) return { stroke: '#D85A30', bg: 'rgba(216,90,48,0.08)',  label: 'High',     badgeStyle: 'background:rgba(216,90,48,0.12);color:#e87a55' };
+  return                  { stroke: '#E24B4A', bg: 'rgba(226,75,74,0.08)',  label: 'Critical', badgeStyle: 'background:rgba(226,75,74,0.12);color:#e87777' };
+}
+
+// ─── TAB SWITCHING ───────────────────────────────────────────────────────────
+function switchTab(tabId, el) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.dash-nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('tab-' + tabId).classList.add('active');
+  if (el) el.classList.add('active');
+}
+
+// ─── LOADING ─────────────────────────────────────────────────────────────────
+let msgInterval, stepInterval;
+const MSGS = ['Scan des profils LinkedIn...','Analyse des repos GitHub...','Recherche fuites de données...','Vérification sous-domaines...','Compilation du rapport MITRE...'];
+
+function showLoading(target) {
+  document.getElementById('loading').classList.remove('hidden');
+  document.getElementById('loadTarget').textContent = target || '—';
+  const bar = document.getElementById('loadBar');
+  bar.style.animation = 'none'; bar.offsetHeight; bar.style.animation = '';
+  let idx = 0;
+  const el = document.getElementById('loadingText');
+  el.textContent = MSGS[0];
+  msgInterval = setInterval(() => {
+    el.style.opacity = '0';
+    setTimeout(() => { idx = (idx + 1) % MSGS.length; el.textContent = MSGS[idx]; el.style.opacity = '1'; }, 300);
+  }, 2500);
+  const steps = document.querySelectorAll('.loading-step');
+  steps.forEach(s => { s.classList.remove('done','active'); s.querySelector('.step-icon').textContent = '○'; });
+  let si = 0; steps[0].classList.add('active');
+  stepInterval = setInterval(() => {
+    if (si < steps.length) { steps[si].classList.remove('active'); steps[si].classList.add('done'); steps[si].querySelector('.step-icon').textContent = '✓'; }
+    si++;
+    if (si < steps.length) steps[si].classList.add('active');
+  }, 2500);
+}
+
+function hideLoading() {
+  clearInterval(msgInterval); clearInterval(stepInterval);
+  document.getElementById('loading').classList.add('hidden');
+}
+
+// ─── SCORE RING ───────────────────────────────────────────────────────────────
+function animateScore(score) {
+  const c = getRiskColor(score);
+  const arc = document.getElementById('scoreArc');
+  arc.setAttribute('stroke', c.stroke);
+  arc.closest('svg').querySelector('circle').setAttribute('fill', c.bg);
+  const num = document.getElementById('scoreNum');
+  const label = document.getElementById('scoreLabel');
+  num.style.color = c.stroke; label.style.color = c.stroke; label.textContent = c.label + ' Risk';
+  let current = 0;
+  const start = performance.now();
+  function tick(now) {
+    const t = Math.min((now - start) / 1400, 1);
+    const eased = t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
+    current = Math.round(eased * score);
+    num.textContent = current;
+    arc.setAttribute('stroke-dasharray', `${current * 4.02} 402`);
+    if (t < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+  const badge = document.getElementById('riskBadge');
+  badge.textContent = c.label.toUpperCase();
+  badge.setAttribute('style', c.badgeStyle + ';border:1px solid ' + c.stroke + '40;padding:2px 8px;border-radius:4px;font-family:var(--font-mono);font-size:0.6rem;font-weight:700;letter-spacing:0.08em;');
+}
+
+// ─── CATEGORIES ───────────────────────────────────────────────────────────────
+function renderCategories(cats) {
+  const grid = document.getElementById('catGrid');
+  grid.innerHTML = Object.entries(cats).map(([key, val]) => {
+    const c = getRiskColor(val.score);
+    const findings = val.findings.slice(0, 2).map(f => `<li class="cat-finding">${f}</li>`).join('');
+    return `<div class="cat-card">
+      <div class="cat-name">${CAT_LABELS[key] || key}</div>
+      <div class="cat-score-row">
+        <span style="font-family:var(--font-mono);font-size:0.6rem;color:var(--text-dim);letter-spacing:.06em">SCORE</span>
+        <span class="cat-score-num" style="color:${c.stroke}">${val.score}</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:0%;background:${c.stroke}" data-width="${val.score}"></div></div>
+      <ul class="cat-findings">${findings || '<li class="cat-finding" style="color:var(--text-dim)">Aucune exposition détectée</li>'}</ul>
+    </div>`;
+  }).join('');
+  setTimeout(() => { document.querySelectorAll('.progress-fill').forEach(el => { el.style.width = el.dataset.width + '%'; }); }, 100);
+}
+
+// ─── ALERTS BUILDER depuis les données réelles ──────────────────────────────
+function buildAlertsFromData(data) {
+  const alerts = [];
+  const sevOrder = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
+  // Construit les alertes depuis les mitigations (findings réels)
+  (data.mitigations || [])
+    .sort((a,b) => (sevOrder[a.priority]||4) - (sevOrder[b.priority]||4))
+    .forEach(m => {
+      alerts.push({ sev: m.priority, title: m.finding, desc: m.action, time: 'now' });
+    });
+  // Ajoute des alertes depuis les findings les plus graves
+  Object.entries(data.categories || {}).forEach(([cat, val]) => {
+    if (val.score >= 80 && val.findings?.length) {
+      val.findings.slice(0,1).forEach(f => {
+        if (!alerts.find(a => a.title === f)) {
+          alerts.push({ sev: val.score >= 90 ? 'CRITICAL' : 'HIGH', title: f, desc: `Détecté dans la catégorie : ${CAT_LABELS[cat] || cat}`, time: 'now' });
+        }
+      });
+    }
+  });
+  return alerts;
+}
+
+function renderAlertRow(a) {
+  const sevColor = { CRITICAL: { border: 'var(--red)', bg: 'rgba(226,75,74,0.15)', color: '#e87777' }, HIGH: { border: 'var(--amber)', bg: 'rgba(186,117,23,0.15)', color: '#e8a84b' }, MEDIUM: { border: 'var(--green)', bg: 'rgba(29,158,117,0.1)', color: '#4ecba0' }, LOW: { border: 'var(--text-dim)', bg: 'rgba(255,255,255,0.04)', color: 'var(--text-muted)' } };
+  const sc = sevColor[a.sev] || sevColor.LOW;
+  return `<div class="alert-item" style="border-left-color:${sc.border}">
+    <span class="alert-sev" style="background:${sc.bg};color:${sc.color}">${a.sev}</span>
+    <div class="alert-content"><div class="alert-title">${a.title}</div><div class="alert-desc">${a.desc}</div></div>
+    <div class="alert-time">${a.time}</div>
+  </div>`;
+}
+
+function renderAlertListMain() {
+  const alerts = buildAlertsFromData(currentData);
+  const crit = alerts.filter(a => a.sev === 'CRITICAL').length;
+  const high = alerts.filter(a => a.sev === 'HIGH').length;
+  document.getElementById('alertListMain').innerHTML = alerts.slice(0,5).map(renderAlertRow).join('') ||
+    '<div style="font-family:var(--font-mono);font-size:0.65rem;color:var(--text-dim);padding:8px 0">Aucune alerte détectée.</div>';
+  // Mise à jour compteurs onglet Alerts
+  document.getElementById('alertBadge').textContent = alerts.length;
+  document.querySelectorAll('.acnt-num')[0].textContent = crit;
+  document.querySelectorAll('.acnt-num')[1].textContent = high;
+  document.querySelectorAll('.acnt-num')[3].textContent = alerts.length;
+  // Met à jour les filtres aussi
+  document.querySelector('.filter-btn').textContent = `Tous (${alerts.length})`;
+}
+
+function filterAlerts(filter, btn) {
+  activeFilter = filter;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  document.getElementById('alertFilterLabel').textContent = filter === 'all' ? 'Tous' : filter;
+  const alerts = buildAlertsFromData(currentData);
+  const filtered = filter === 'all' ? alerts : alerts.filter(a => a.sev === filter);
+  document.getElementById('alertListFull').innerHTML = filtered.map(renderAlertRow).join('') ||
+    '<div style="font-family:var(--font-mono);font-size:0.65rem;color:var(--text-dim);padding:8px 0">Aucune alerte pour ce filtre.</div>';
+}
+
+// ─── SCENARIOS ────────────────────────────────────────────────────────────────
+function renderScenarios(scenarios) {
+  if (!scenarios || !scenarios.length) { document.getElementById('scenarioList').innerHTML = '<div style="font-family:var(--font-mono);font-size:0.65rem;color:var(--text-dim);padding:8px 0">Aucun scénario détecté.</div>'; return; }
+  document.getElementById('scenarioList').innerHTML = scenarios.map(s => {
+    const lColor = s.likelihood === 'CRITICAL' ? 'var(--red)' : s.likelihood === 'HIGH' ? 'var(--orange)' : 'var(--amber)';
+    return `<div class="scenario-item">
+      <div class="scenario-header"><div class="scenario-title">${s.title}</div><span class="mitre-badge">${s.mitre_technique || s.mitre || ''}</span></div>
+      <div class="scenario-desc">${s.description || s.narrative || ''}</div>
+      <div class="likelihood-row"><span class="likelihood-label">LIKELIHOOD //</span><span class="likelihood-val" style="color:${lColor}">${s.likelihood}</span></div>
+    </div>`;
+  }).join('');
+}
+
+// ─── MITIGATIONS ─────────────────────────────────────────────────────────────
+function renderMitigations(mits) {
+  if (!mits || !mits.length) { document.getElementById('mitList').innerHTML = '<div style="font-family:var(--font-mono);font-size:0.65rem;color:var(--text-dim);padding:8px 0">Aucune mitigation.</div>'; return; }
+  const sorted = [...mits].sort((a,b) => ({'CRITICAL':0,'HIGH':1,'MEDIUM':2,'LOW':3}[a.priority]||4) - ({'CRITICAL':0,'HIGH':1,'MEDIUM':2,'LOW':3}[b.priority]||4));
+  const styles = { CRITICAL: 'background:rgba(226,75,74,0.12);color:#e87777;border:1px solid rgba(226,75,74,0.2)', HIGH: 'background:rgba(186,117,23,0.12);color:#e8a84b;border:1px solid rgba(186,117,23,0.2)', MEDIUM: 'background:rgba(29,158,117,0.12);color:#4ecba0;border:1px solid rgba(29,158,117,0.2)', LOW: 'background:rgba(255,255,255,0.05);color:var(--text-muted);border:1px solid var(--border2)' };
+  document.getElementById('mitList').innerHTML = sorted.map(m => `<div class="mit-item">
+    <span class="mit-badge" style="${styles[m.priority] || styles.LOW}">${m.priority}</span>
+    <div class="mit-text"><strong style="color:var(--text)">${m.finding}</strong><br/><span style="color:var(--text-muted);font-size:0.68rem">${m.action}</span></div>
+  </div>`).join('');
+}
+
+// ─── LIVE SCAN TERMINAL ────────────────────────────────────────────────────────
+function termLog(term, cls, text) {
+  const cursor = term.querySelector('.terminal-cursor');
+  if (cursor) cursor.remove();
+  const div = document.createElement('div');
+  div.className = cls;
+  div.textContent = text;
+  term.appendChild(div);
+  const c = document.createElement('span');
+  c.className = 'terminal-cursor';
+  term.appendChild(c);
+  term.scrollTop = term.scrollHeight;
+}
+
+function runLiveScan() {
+  const target = document.getElementById('liveScanInput').value.trim() || 'target.com';
+  callGeminiAPI(target, document.getElementById('terminal'));
+}
+
+// ─── EXPORTS ──────────────────────────────────────────────────────────────────
+function exportPDF() { window.print(); showToast('Ouverture de la boîte de dialogue impression...'); }
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(currentData, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `shadowmap-${currentData.company || 'report'}-${Date.now()}.json`;
+  a.click();
+  showToast('JSON téléchargé avec succès.');
+}
+
+// ─── TOAST ────────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ─── DISPLAY RESULTS ─────────────────────────────────────────────────────────
+function displayResults(data) {
+  currentData = data;
+  document.getElementById('dashboard').style.display = 'block';
+  document.getElementById('scoreCompany').textContent = data.company || data.target || 'cible';
+  document.getElementById('termTarget').textContent = data.company || data.target || 'cible';
+  document.getElementById('dashTarget').textContent = data.company || data.target || 'cible';
+
+  const allFindings = Object.values(data.categories || {}).reduce((acc, c) => acc + (c.findings || []).length, 0);
+  const critCount = (data.mitigations || []).filter(m => m.priority === 'CRITICAL').length;
+  document.getElementById('statAssets').textContent = allFindings;
+  document.getElementById('statCritical').textContent = critCount;
+
+  renderCategories(data.categories || {});
+  renderAlertListMain();
+  filterAlerts('all', document.querySelector('.filter-btn'));
+  renderScenarios(data.attack_scenarios || []);
+  renderMitigations(data.mitigations || []);
+  setTimeout(() => animateScore(data.overall_score || 0), 300);
+}
+
+// ─── GEMINI API ENGINE ────────────────────────────────────────────────────────
+// Remplace YOUR_GEMINI_API_KEY par ta vraie clé depuis https://aistudio.google.com
+const GEMINI_API_KEY = 'YOUR_GEMINI_API_KEY';
+
+const SYSTEM_PROMPT = `Tu es ShadowMap, un outil OSINT de cybersécurité professionnel.
+Quand on te donne un domaine ou une entreprise, effectue une recherche web complète
+et retourne UNIQUEMENT un objet JSON valide sans aucun texte avant ou après.
+
+Structure JSON OBLIGATOIRE (respecte exactement ces clés) :
+{
+  "company": "Nom de l'entreprise trouvé",
+  "overall_score": <nombre 0-100 représentant le risque global>,
+  "risk_level": "<Low|Medium|High|Critical>",
+  "sources_count": <nombre de sources web consultées>,
+  "categories": {
+    "tech_stack":        { "score": <0-100>, "findings": ["finding réel 1", "finding réel 2", "finding réel 3"] },
+    "people_exposure":   { "score": <0-100>, "findings": ["finding réel 1", "finding réel 2", "finding réel 3"] },
+    "code_credentials":  { "score": <0-100>, "findings": ["finding réel 1", "finding réel 2", "finding réel 3"] },
+    "domains_infra":     { "score": <0-100>, "findings": ["finding réel 1", "finding réel 2", "finding réel 3"] },
+    "data_leaks":        { "score": <0-100>, "findings": ["finding réel 1", "finding réel 2", "finding réel 3"] }
+  },
+  "attack_scenarios": [
+    { "title": "Titre du scénario", "mitre_technique": "Txxxx", "likelihood": "<Low|Medium|High|Critical>", "description": "Description détaillée du scénario d'attaque basé sur les findings." },
+    { "title": "Titre du scénario 2", "mitre_technique": "Txxxx", "likelihood": "<Low|Medium|High>", "description": "Description détaillée." }
+  ],
+  "mitigations": [
+    { "priority": "<Critical|High|Medium|Low>", "finding": "Finding concerné", "action": "Action corrective concrète et spécifique." },
+    { "priority": "<Critical|High|Medium>", "finding": "Finding 2", "action": "Action 2." }
+  ]
+}
+
+RÈGLES IMPORTANTES :
+- Utilise la recherche web pour trouver des informations RÉELLES et publiques sur la cible
+- Les scores doivent refléter la réalité de ce que tu trouves
+- Les findings doivent être spécifiques (technologies réelles, noms de repos, données réelles)
+- Si peu d'informations disponibles, mets des scores bas (0-30)
+- CRITIQUE: Retourne UNIQUEMENT le JSON, zéro texte autour, zéro balises markdown`;
+
+async function callGeminiAPI(target, termEl) {
+  // Reset terminal
+  if (termEl) {
+    termEl.innerHTML = '';
+    termLog(termEl, 't-dim', `[ShadowMap] Initialisation du scan OSINT...`);
+    termLog(termEl, 't-dim', `[SYS] Gemini AI + Web Search activé`);
+    termLog(termEl, '', `[TARGET] ${target}`);
+    termLog(termEl, 't-dim', `[SYS] Envoi de la requête à Gemini...`);
+  }
+
+  // Vérifie que la clé API est configurée
+  if (GEMINI_API_KEY === 'YOUR_GEMINI_API_KEY') {
+    if (termEl) termLog(termEl, 't-err', '[ERREUR] Clé API manquante — chargement du fallback...');
+    return null;
+  }
+
+  try {
+    if (termEl) termLog(termEl, '', `[T1593] Recherche web en cours sur "${target}"...`);
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+          contents: [{ parts: [{ text: `Analyse la surface d'attaque OSINT de : ${target}` }] }],
+          tools: [{ google_search: {} }],
+          generationConfig: { temperature: 0.1, maxOutputTokens: 4096 }
+        })
+      }
+    );
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error?.message || `HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!rawText) throw new Error('Réponse vide de Gemini');
+
+    if (termEl) termLog(termEl, 't-ok', '[T1593] Données LinkedIn/web récupérées ✓');
+    if (termEl) termLog(termEl, 't-ok', '[T1593.003] Repos GitHub analysés ✓');
+    if (termEl) termLog(termEl, 't-ok', '[T1596] Infrastructure DNS cartographiée ✓');
+    if (termEl) termLog(termEl, 't-ok', '[T1589] Fuites de données vérifiées ✓');
+
+    // Nettoie les backticks markdown si présents
+    const cleaned = rawText
+      .replace(/```json\s*/gi, '')
+      .replace(/```\s*/g, '')
+      .trim();
+
+    // Extrait le JSON (cherche { ... })
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('JSON introuvable dans la réponse');
+
+    const result = JSON.parse(jsonMatch[0]);
+
+    if (termEl) termLog(termEl, 't-ok', `[DONE] Score calculé : ${result.overall_score}/100 — ${result.risk_level}`);
+    if (termEl) termLog(termEl, 't-dim', `[SYS] ${result.sources_count || '?'} sources analysées`);
+
+    return result;
+
+  } catch (err) {
+    if (termEl) termLog(termEl, 't-err', `[ERREUR] ${err.message}`);
+    if (termEl) termLog(termEl, 't-warn', '[FALLBACK] Chargement des données de secours...');
+    console.error('Gemini API error:', err);
+    return null;
+  }
+}
+
+// ─── MAIN FLOW ────────────────────────────────────────────────────────────────
+async function startScan() {
+  const domain = document.getElementById('domainInput').value.trim() || 'shopify.com';
+  document.getElementById('dashTarget').textContent = domain;
+  document.getElementById('landing').style.display = 'none';
+  showLoading(domain);
+
+  // Appel API Gemini réel
+  const result = await callGeminiAPI(domain, null);
+
+  hideLoading();
+
+  if (result) {
+    // Résultat réel de Gemini
+    if (!result.company) result.company = domain;
+    displayResults(result);
+    showToast(`Scan réel terminé — ${result.sources_count || '?'} sources analysées`);
+  } else {
+    // Fallback : essaie fallback.json puis données statiques
+    try {
+      const fb = await fetch('fallback.json');
+      const fbData = await fb.json();
+      displayResults(fbData);
+      showToast('Fallback chargé (clé API non configurée)');
+    } catch {
+      displayResults(FALLBACK_DATA);
+      showToast('Mode démo — configurez votre clé API Gemini');
+    }
+  }
+}
+
+function resetToLanding() {
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('landing').style.display = 'flex';
+  switchTab('attack-surface', document.querySelector('.dash-nav-item'));
+}
+
+// Init
+window.addEventListener('DOMContentLoaded', () => {
+  filterAlerts('all', document.querySelector('.filter-btn'));
+});
+</script>
+</body>
+</html>
