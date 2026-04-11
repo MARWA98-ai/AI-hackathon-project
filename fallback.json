@@ -1,1 +1,64 @@
-{ "target": "shopify.com", "overall_score": 72, "risk_level": "HIGH", "categories": [ {"name": "Network Exposure", "score": 80, "level": "HIGH"}, {"name": "Application Security", "score": 65, "level": "MEDIUM"}, {"name": "Data Exposure", "score": 70, "level": "HIGH"}, {"name": "Identity & Access", "score": 60, "level": "MEDIUM"}, {"name": "Third Party Risk", "score": 85, "level": "CRITICAL"} ], "findings": [ {"severity": "CRITICAL", "title": "Subdomain Hijacking on Abandoned Cloud Assets", "description": "Detection of several dangling CNAME records pointing to decommissioned third-party cloud services, potentially allowing attackers to take control of legitimate shopify.com subdomains."}, {"severity": "HIGH", "title": "Critical Vulnerability in Third-Party App via API", "description": "A popular third-party application integrated with Shopify was found to contain a high-severity vulnerability permitting unauthorized access to merchant data."} ], "mitre_tags": [ {"id": "T1190", "name": "Exploit Public-Facing Application"}, {"id": "T1584.004", "name": "Compromise Infrastructure: DNS Server"} ], "attack_scenarios": [ {"title": "Subdomain Hijacking for Phishing", "narrative": "Attacker identifies a dangling CNAME record (e.g., test.shopify.com) pointing to an unclaimed Azure instance. Attacker claims the instance, hosts a perfect replica of the Shopify admin login page on test.shopify.com, and sends phishing emails to merchants to harvest credentials."} ], "mitigations": [ "Perform continuous DNS auditing to proactively identify and remove dangling CNAME records.", "Implement stricter security vetting and continuous monitoring of third-party applications in the Shopify App Store." ] }
+{
+    "target": "shopify.com",
+    "overall_score": 72,
+    "risk_level": "HIGH",
+    "categories": [
+        {
+            "name": "Network Exposure",
+            "score": 80,
+            "level": "HIGH"
+        },
+        {
+            "name": "Application Security",
+            "score": 65,
+            "level": "MEDIUM"
+        },
+        {
+            "name": "Data Exposure",
+            "score": 70,
+            "level": "HIGH"
+        },
+        {
+            "name": "Identity & Access",
+            "score": 60,
+            "level": "MEDIUM"
+        },
+        {
+            "name": "Third Party Risk",
+            "score": 85,
+            "level": "CRITICAL"
+        }
+    ],
+    "findings": [
+        {
+            "severity": "CRITICAL",
+            "title": "Subdomain Hijacking on Abandoned Cloud Assets",
+            "description": "Detection of several dangling CNAME records pointing to decommissioned third-party cloud services, potentially allowing attackers to take control of legitimate shopify.com subdomains."
+        },
+        {
+            "severity": "HIGH",
+            "title": "Critical Vulnerability in Third-Party App via API",
+            "description": "A popular third-party application integrated with Shopify was found to contain a high-severity vulnerability permitting unauthorized access to merchant data."
+        }
+    ],
+    "mitre_tags": [
+        {
+            "id": "T1190",
+            "name": "Exploit Public-Facing Application"
+        },
+        {
+            "id": "T1584.004",
+            "name": "Compromise Infrastructure: DNS Server"
+        }
+    ],
+    "attack_scenarios": [
+        {
+            "title": "Subdomain Hijacking for Phishing",
+            "narrative": "Attacker identifies a dangling CNAME record (e.g., test.shopify.com) pointing to an unclaimed Azure instance. Attacker claims the instance, hosts a perfect replica of the Shopify admin login page on test.shopify.com, and sends phishing emails to merchants to harvest credentials."
+        }
+    ],
+    "mitigations": [
+        "Perform continuous DNS auditing to proactively identify and remove dangling CNAME records.",
+        "Implement stricter security vetting and continuous monitoring of third-party applications in the Shopify App Store."
+    ]
+}
